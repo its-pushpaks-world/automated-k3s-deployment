@@ -1,9 +1,11 @@
 name: Deploy Nginx to K3s
 
 on:
-  push:
+  pull_request:
     branches:
       - main
+    paths:
+      - 'K3s-manifests/**'
 
 env:
   KUBECONFIG: ${{ github.workspace }}/kubeconfig
@@ -22,20 +24,20 @@ jobs:
           # Write the completely untouched, clean secret to a file
           echo "$RAW_KUBECONFIG" > $KUBECONFIG
           
-          # 1. Dynamically swap 127.0.0.1 with the GitHub Repo Variable
+          # Dynamically swap 127.0.0.1 with the GitHub Repo Variable
           sed -i "s/127.0.0.1/${{ vars.EC2_PUBLIC_IP }}/g" $KUBECONFIG
           
-          # 2. Wipe out the certificate authority line completely to stop the x509 validation check
+          # Wipe out the certificate authority line to bypass strict local x509 validation
           sed -i '/certificate-authority-data:/d' $KUBECONFIG
           
-          # 3. Inject the explicit insecure-skip-tls-verify flag right under the cluster definition
+          # Inject insecure skip flag right under cluster definition
           sed -i '/cluster:/a \    insecure-skip-tls-verify: true' $KUBECONFIG
           
           chmod 600 $KUBECONFIG
 
       - name: Deploy to K3s Cluster
         run: |
-          kubectl apply -f nginx-deployment.yaml
+          kubectl apply -f K3s-manifests/nginx-deployment.yaml
           
       - name: Verify Deployment
         run: |
