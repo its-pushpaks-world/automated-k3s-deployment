@@ -1,0 +1,28 @@
+name: Deploy Nginx to K3s
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Configure Kubeconfig
+        run: |
+          mkdir -p ~/.kube
+          echo "${{ secrets.KUBECONFIG }}" > ~/.kube/config
+          chmod 600 ~/.kube/config
+
+      - name: Deploy to K3s Cluster
+        run: |
+          kubectl apply -f nginx-deployment.yaml
+          
+      - name: Verify Deployment
+        run: |
+          kubectl get deployments
+          kubectl get services
