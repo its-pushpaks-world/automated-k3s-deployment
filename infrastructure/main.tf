@@ -37,7 +37,7 @@ resource "aws_key_pair" "generated_key" {
   public_key = tls_private_key.k3s_key.public_key_openssh
 }
 
-# Security Group to allow inbound traffic for SSH, K3s API, and Nginx NodePort
+# Security Group to allow inbound traffic for SSH, K3s API and Nginx NodePort
 resource "aws_security_group" "k3s_sg" {
   name        = "k3s-sg"
   description = "Allow inbound traffic for K3s and Nginx"
