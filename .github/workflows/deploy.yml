@@ -1,4 +1,4 @@
-name: Deploy Nginx to K3s
+name: E2E Infrastructure Provisioning and App Deployment
 
 on:
   pull_request:
@@ -6,40 +6,82 @@ on:
       - main
     paths:
       - 'K3s-manifests/**'
+      - 'infrastructure/**'
 
 env:
   KUBECONFIG: ${{ github.workspace }}/kubeconfig
 
 jobs:
-  deploy:
+  orchestrate-environment:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
-      - name: Configure Kubeconfig Programmatically
-        env:
-          RAW_KUBECONFIG: ${{ secrets.KUBECONFIG }}
+      - name: Configure AWS Cloud Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: eu-north-1
+
+      - name: Initialize and Apply Terraform
+        id: terraform
         run: |
-          # Write the completely untouched, clean secret to a file
-          echo "$RAW_KUBECONFIG" > $KUBECONFIG
+          cd infrastructure
+          terraform init
+          terraform apply -auto-approve
           
-          # Dynamically swap 127.0.0.1 with the GitHub Repo Variable
-          sed -i "s/127.0.0.1/${{ vars.EC2_PUBLIC_IP }}/g" $KUBECONFIG
+          # Capture output assets into the execution environment variables
+          echo "CLUSTER_IP=$(terraform output -raw k3s_public_ip)" >> $GITHUB_ENV
+          echo "TF_PRIVATE_KEY<<EOF" >> $GITHUB_ENV
+          terraform output -raw private_key_pem >> $GITHUB_ENV
+          echo "EOF" >> $GITHUB_ENV
+
+      - name: Synchronize K3s Credentials Programmatically
+        run: |
+          # Write the temporary dynamic private key to disk
+          echo "$TF_PRIVATE_KEY" > pipeline_key.pem
+          chmod 600 pipeline_key.pem
           
-          # Wipe out the certificate authority line to bypass strict local x509 validation
+          echo "Establishing secure connection to the live EC2 Instance: $CLUSTER_IP"
+          echo "Polling cluster until K3s boot initialization completes..."
+          
+          # Safe execution loop: Poll the instance for up to 5 minutes until the cluster credentials file exists
+          for i in {1..30}; do
+            if ssh -i pipeline_key.pem -o StrictHostKeyChecking=no ubuntu@$CLUSTER_IP "sudo test -f /etc/rancher/k3s/k3s.yaml" 2>/dev/null; then
+              echo "K3s instance successfully initialized. Extracting configuration payload..."
+              ssh -i pipeline_key.pem -o StrictHostKeyChecking=no ubuntu@$CLUSTER_IP "sudo cat /etc/rancher/k3s/k3s.yaml" > raw_config.yaml
+              break
+            fi
+            echo "K3s boot-up scripts still executing. Retrying in 10 seconds... ($i/30)"
+            sleep 10
+          done
+
+          if [ ! -f raw_config.yaml ]; then
+            echo "Error: K3s initialization timed out."
+            exit 1
+          fi
+
+          # Stream the configuration to the proper location
+          cat raw_config.yaml > $KUBECONFIG
+          
+          # Dynamically swap 127.0.0.1 with the live EC2 IP address
+          sed -i "s/127.0.0.1/$CLUSTER_IP/g" $KUBECONFIG
+          
+          # Strip out strict certificate checking lines to handle self-signed cluster boundaries
           sed -i '/certificate-authority-data:/d' $KUBECONFIG
-          
-          # Inject insecure skip flag right under cluster definition
           sed -i '/cluster:/a \    insecure-skip-tls-verify: true' $KUBECONFIG
           
           chmod 600 $KUBECONFIG
+          rm pipeline_key.pem raw_config.yaml
 
-      - name: Deploy to K3s Cluster
+      - name: Deploy Manifests to K3s Cluster
         run: |
           kubectl apply -f K3s-manifests/nginx-deployment.yaml
           
-      - name: Verify Deployment
+      - name: Verify Live Deployment Status
         run: |
           kubectl get deployments
           kubectl get services
+          echo "Application is live at http://$CLUSTER_IP:30080"

@@ -1,24 +1,28 @@
-# Pull-Request-Driven Automated K3s Deployment Pipeline
+# Fully Automated E2E Infrastructure & K3s GitOps Pipeline
 
-This repository hosts a production-grade continuous deployment (CD) architecture. It manages a cloud-native single-node Kubernetes cluster (K3s) on AWS infrastructure using targeted automation. The pipeline leverages scoped GitHub Actions event triggers to isolate infrastructure mutations strictly to code review cycles.
+This repository hosts a production-grade, single-command continuous deployment (CD) ecosystem. It fully automates both the cloud infrastructure orchestration and application availability layers using a streamlined, pull-request-driven lifecycle.
 
 ---
 
 ## 🏗️ Architectural Overview
 
-The architecture minimizes pipeline execution overhead by implementing event-driven and path-specific filters:
+The framework processes operations fluidly across three native, interconnected layers without requiring manual hand-offs or custom configuration editing:
 
-1. **Isolation Layer:** The application's declarative states are decoupled from repository tracking configurations and localized entirely inside the `K3s-manifests/` directory.
-2. **Pull-Request Gatekeeping:** Infrastructure alterations do not auto-apply on general pushes. The execution engine evaluates modifications *only* during an active Pull Request context targeting `main`.
-3. **Automated Dynamic Auth Alignment:** The CI/CD runner ingests raw Kubernetes cluster configuration strings, strips structural x509 certificate validation boundaries programmatically, maps remote ingress locations dynamically via Repository Variables, and handles atomic target state matching.
+1. **Infrastructure Automation Layer:** Managed under the `infrastructure/` directory using Terraform. It provisions a clean network security envelope, maps target ingress paths, spins up a high-performance compute node, and passes system setup data via user scripts.
+2. **Decoupled Application Layer:** Located under the `K3s-manifests/` directory. It maintains pure, declarative Kubernetes objects (ConfigMaps, Deployments, and NodePort access mappings) completely separated from build or system infrastructure dependencies.
+3. **Continuous Orchestration Engine:** Managed by GitHub Actions. The pipeline monitors repository scopes, automatically provisions cloud infrastructure, securely establishes SSH tunnels to retrieve transient cluster assets, dynamically translates network parameters, and reconciles state variables automatically.
 
 ```
-[ Feature Branch ] ---> Open PR ---> [ Filter Checklist Evaluated ]
-                                                 |
-                                     (Path: K3s-manifests/** ?)
-                                                 |
-                                                 v
-[ AWS Cloud EC2 Node ] <--- Remote Apply <--- [ CI/CD Runner Engine ]
+[ Code Change / PR ] ---> GitHub Actions Runner
+                               |
+                               +---> Step 1: Run Terraform Apply (infrastructure/)
+                               |     (Creates AWS VM & Installs K3s Cluster)
+                               |
+                               +---> Step 2: Extract Live SSH Key & Fetch K3s Config
+                               |     (Dynamically maps remote cluster context)
+                               |
+                               +---> Step 3: Execute Remote Apply (K3s-manifests/)
+                                     (Deploys Application Live to Cloud)
 ```
 
 ---
@@ -29,59 +33,76 @@ The architecture minimizes pipeline execution overhead by implementing event-dri
 .
 ├── .github/
 │   └── workflows/
-│       └── deploy.yml          # Scoped Pull Request Pipeline Configuration
+│       └── deploy.yml          # Combined E2E Infrastructure & App Pipeline
+├── infrastructure/
+│   └── main.tf                 # Terraform Script (Dynamic SSH Key, EC2, K3s Bootstrap)
 ├── K3s-manifests/
-│   └── nginx-deployment.yaml   # Native Kubernetes Decoupled Manifest File
-└── README.md                   # Automation Guide & Architectural Summary
+│   └── nginx-deployment.yaml   # Declarative Application Manifest File
+├── recordings/                 # Project Execution & Demonstration Media
+│   ├── provisioning.mp4        # Infrastructure Bootstrapping Recording
+│   ├── validation.mp4          # Local Manifest Validation Verification
+│   └── pipeline-execution.mp4  # End-to-End Pull Request Run Proof
+└── README.md                   # System Architecture and Operational Overview
 ```
 
 ---
 
-## 🔐 Setup, Secrets & Variables Wiring
+## 🎥 Video Demonstration / Recordings
 
-To run the remote deployment suite, authorization parameters must be mapped inside your GitHub Repository configuration suite prior to launching validation tracks.
+The complete technical execution, verification, and automated pipeline lifecycle are recorded and stored directly within this repository:
 
-### 1. Terminal Credentials Persistence
-Ensure local working environments are synchronized with Git configuration boundaries to enable non-interactive workspace sync loops:
-```bash
-git init
-git branch -M main
-git remote add origin [https://github.com/](https://github.com/)<your-username>/<your-repo-name>.git
-git config --global credential.helper store
-```
-
-### 2. GitHub Actions Context Injectors
-Navigate to **Settings → Secrets and variables → Actions** in your repository dashboard and define the following infrastructure values:
-
-* **Repository Secret (`KUBECONFIG`):** Execute `sudo cat /etc/rancher/k3s/k3s.yaml` inside your running cluster instance terminal. Copy the exact raw output string blocks and paste them straight into the secret value block.
-* **Repository Variable (`EC2_PUBLIC_IP`):** Navigate to the Variables tab and map your active instance public-facing IPv4 address (e.g., `13.62.103.239`).
+* **[Part 1: Infrastructure & Cluster Provisioning](./recordings/provisioning.mp4)** – Walkthrough of the automated AWS EC2 compute instance setup and the K3s cluster bootstrap sequence via Terraform.
+* **[Part 2: Local Manifest Validation](./recordings/validation.mp4)** – Verification of the native Kubernetes resources, verifying the decoupled ConfigMap storage layer and internal network boundary.
+* **[Part 3: End-to-End Pipeline Execution](./recordings/pipeline-execution.mp4)** – Live demonstration of opening the Pull Request, path-filtered pipeline triggering, programmatic authentication mapping, and successful cluster state synchronization.
 
 ---
 
-## 🚀 Execution & Verification Pipeline
+## 🔐 Required Pipeline Credentials
 
-Because this architecture enforces strict branch-protection logic, the pipeline requires an explicit pull request validation cycle to trigger.
+To allow the automation engine to talk securely to AWS, you only need to define your main cloud connection parameters. Manual tracking of IP addresses or Kubernetes credential strings is no longer required.
 
-### Step 1: Stage Changes on a Feature Branch
+Navigate to **Settings → Secrets and variables → Actions** in your GitHub repository interface and configure the following parameters:
+
+* **Repository Secret (`AWS_ACCESS_KEY_ID`):** Your AWS programmatic access key.
+* **Repository Secret (`AWS_SECRET_ACCESS_KEY`):** Your AWS programmatic secret string.
+
+---
+
+## 🚀 Execution & Pipeline Testing
+
+Because the repository structure and path filtering are already established, you can test the pipeline automation directly by modifying the deployment parameters on a feature branch.
+
+#### Step 1: Create a Feature Branch and Modify the Manifest
+Run these commands in your terminal to switch to a feature branch and apply a configuration update inside the existing manifests directory:
+
 ```bash
-# Branch out to isolate development tracks
-git checkout -b feature/manifest-updates
+# 1. Create and switch to a new feature branch
+git checkout -b feature/test-k3s-pipeline
 
-# Ensure changes are located inside the filtered directory
-mkdir -p K3s-manifests
-mv nginx-deployment.yaml K3s-manifests/
-
-# Stage, commit, and push features to the remote branch
-git add .
-git commit -m "feat: localize manifests and target pr pipeline scope"
-git push origin feature/manifest-updates
+# 2. Make an update to the manifest (e.g., modifying replica count or adding a deployment comment)
+echo "# Pipeline verification update" >> K3s-manifests/nginx-deployment.yaml
 ```
 
-### Step 2: Triggering and Validating the Lifecycle
-1. Open your GitHub repository web browser interface and select **Compare & pull request** targeting the `main` branch.
-2. The `Deploy Nginx to K3s` workflow will trigger instantly under the Pull Request check mechanisms.
-3. Review the live log timeline in the **Actions** menu to trace the programmatic text substitutions, credential setups, and cluster reconciliation blocks.
-4. Once the check succeeds, query the endpoint directly to verify ingress traffic flow:
+#### Step 2: Commit and Push the Changes
+Stage the updated manifest file and push the tracking branch to GitHub:
+
+```bash
+# 1. Stage the modified manifest
+git add K3s-manifests/nginx-deployment.yaml
+
+# 2. Commit the change
+git commit -m "test: trigger path-filtered PR workflow update"
+
+# 3. Push the feature branch to the remote repository
+git push origin feature/test-k3s-pipeline
+```
+
+#### Step 3: Open the Pull Request
+1. Go to your GitHub repository dashboard in your web browser.
+2. Click the **Compare & pull request** button that automatically populates for your pushed branch.
+3. Verify that the target base branch is set to `main` and submit the Pull Request.
+4. The workflow will instantly trigger under the **Checks** tab of the PR window, programmatically authenticating with your remote EC2 server and executing the deployment.
+5. Once the check reports a successful execution, test the public-facing route to verify live ingress traffic:
    ```text
    http://<YOUR_EC2_PUBLIC_IP>:30080
    ```
@@ -90,7 +111,7 @@ git push origin feature/manifest-updates
 
 ## 💎 Architectural Discussion (Push vs. Pull-Based GitOps)
 
-The mechanism implemented here operates as a **Push-Based Pipeline via PR Validation**. The automation cluster agent actively accesses the tracking repository's context, builds local kubeconfig frames, and pushes configuration updates across the public internet network grid onto API Port `6443`.
+The mechanism implemented here operates as an advanced **Push-Based Pipeline via PR Validation**. The automation cluster agent actively accesses the tracking repository's context, builds local kubeconfig frames, and pushes configuration updates across the public internet network grid onto API Port `6443`.
 
 While this model provides deep insight into state changes during verification and pull request approval workflows, high-velocity corporate environments typically mature into **Pull-Based GitOps Models** (utilizing inside-the-cluster management runtimes like **ArgoCD** or **FluxCD**).
 
@@ -98,3 +119,4 @@ While this model provides deep insight into state changes during verification an
 * **Secured Perimeter Footprints:** Cluster control planes eliminate public internet port exposures (Port `6443`). Internal network operators pull state updates securely over outbound standard HTTPS channels.
 * **Secret Sprawl Elimination:** Centralized cloud execution nodes no longer store persistent configuration profiles or master admin credentials.
 * **Active Drift Self-Healing:** The system engine continually compares live runtime environments against the tracking source-of-truth. If human intervention alters states via native CLI controllers, the GitOps loops actively identify the configuration variance and apply rollbacks to restore target tracking structures automatically.
+```
