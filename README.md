@@ -33,16 +33,16 @@ The framework processes operations fluidly across three native, interconnected l
 .
 ├── .github/
 │   └── workflows/
-│       └── deploy.yml          # Combined E2E Infrastructure & App Pipeline
+│       └── deploy.yml                                       # Combined E2E Infrastructure & App Pipeline
 ├── infrastructure/
-│   └── main.tf                 # Terraform Script (Dynamic SSH Key, EC2, K3s Bootstrap)
+│   └── main.tf                                              # Terraform Script (Dynamic SSH Key, EC2, K3s Bootstrap)
 ├── K3s-manifests/
-│   └── nginx-deployment.yaml   # Declarative Application Manifest File
-├── recordings/                 # Project Execution & Demonstration Media
-│   ├── provisioning.mp4        # Infrastructure Bootstrapping Recording
-│   ├── validation.mp4          # Local Manifest Validation Verification
-│   └── pipeline-execution.mp4  # End-to-End Pull Request Run Proof
-└── README.md                   # System Architecture and Operational Overview
+│   └── nginx-deployment.yaml                                # Declarative Application Manifest File
+├── recordings/                                              # Project Execution & Demonstration Media
+│   ├── Part_1_Install_k3s_on_a_Linux_Machine                # Infrastructure Bootstrapping Recording
+│   ├── Part_2_Deploy_Hello World_Nginx_Application          # Local Manifest Validation Verification
+│   └── Part_3_Set_Up_Git_Pipeline_for_Automatic_Deployment  # End-to-End Pull Request Run Proof
+└── README.md                                                # System Architecture and Operational Overview
 ```
 
 ---
