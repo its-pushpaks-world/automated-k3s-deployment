@@ -51,9 +51,17 @@ The framework processes operations fluidly across three native, interconnected l
 
 The complete technical execution, verification, and automated pipeline lifecycle are recorded and stored directly within this repository:
 
-* **[Part 1: Infrastructure & Cluster Provisioning](./recordings/provisioning.mp4)** – Walkthrough of the automated AWS EC2 compute instance setup and the K3s cluster bootstrap sequence via Terraform.
-* **[Part 2: Local Manifest Validation](./recordings/validation.mp4)** – Verification of the native Kubernetes resources, verifying the decoupled ConfigMap storage layer and internal network boundary.
-* **[Part 3: End-to-End Pipeline Execution](./recordings/pipeline-execution.mp4)** – Live demonstration of opening the Pull Request, path-filtered pipeline triggering, programmatic authentication mapping, and successful cluster state synchronization.
+* **[Part 1: Install k3s on a Linux Machine]** – Walkthrough of the automated AWS EC2 compute instance setup and the K3s cluster bootstrap sequence via Terraform.
+
+https://github.com/user-attachments/assets/2d6523f6-4d3e-48dc-ab71-78734b40da90
+
+* **[Part 2: Deploy "Hello World" Nginx Application]** – Verification of the native Kubernetes resources, verifying the decoupled ConfigMap storage layer and internal network boundary.
+
+https://github.com/user-attachments/assets/4ff83f60-5265-491a-b83d-48752ef828f1
+
+* **[Part 3: Set Up Git Pipeline for Automatic Deployment]** – Live demonstration of opening the Pull Request, path-filtered pipeline triggering, programmatic authentication mapping, and successful cluster state synchronization.
+
+https://github.com/user-attachments/assets/4b680254-f994-4f3b-91b2-2bc1390b6853
 
 ---
 
